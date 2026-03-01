@@ -1,1 +1,10 @@
 processed/  dataset/  weights/  flowiq-env/  __pycache__/  *.npy  *.pkl  *.pt  *.csv 
+processed/ 
+dataset/ 
+weights/ 
+flowiq-env/ 
+__pycache__/ 
+*.npy 
+*.pkl 
+*.pt 
+*.csv 
