@@ -2,6 +2,14 @@ import { useState, useMemo } from 'react'
 import { LEVEL_COLORS } from '../constants.js'
 import { postOptimize } from '../api/flows.js'
 
+function getLevelFromScore(score) {
+  if (score == null || Number.isNaN(score)) return 'NORMAL'
+  if (score > 80) return 'CRITICAL'
+  if (score > 60) return 'HIGH'
+  if (score > 35) return 'NORMAL'
+  return 'LOW'
+}
+
 const FILTERS = [
   { id: 'all', label: 'All' },
   { id: 'CRITICAL', label: 'CRITICAL' },
@@ -16,14 +24,16 @@ export function HotspotList({ hotspots, onDeployResult, deployedIntersectionIds 
   const [visibleCount, setVisibleCount] = useState(VISIBLE_INITIAL)
   const deployedSet = useMemo(() => new Set(deployedIntersectionIds ?? []), [deployedIntersectionIds])
 
+  const getLevel = (h) => (h.level ?? h.congestion_level) ? String(h.level ?? h.congestion_level).toUpperCase() : getLevelFromScore(h.congestion_score ?? h.peak_score ?? h.score ?? 0)
+
   const sorted = useMemo(() => {
     const list = [...(hotspots || [])]
-    const levelOrder = { CRITICAL: 0, HIGH: 1 }
+    const levelOrder = { CRITICAL: 0, HIGH: 1, NORMAL: 2, LOW: 3 }
     return list.sort((a, b) => {
-      const levelA = (a.level ?? a.congestion_level ?? 'HIGH').toUpperCase()
-      const levelB = (b.level ?? b.congestion_level ?? 'HIGH').toUpperCase()
-      const orderA = levelOrder[levelA] ?? 2
-      const orderB = levelOrder[levelB] ?? 2
+      const levelA = getLevel(a)
+      const levelB = getLevel(b)
+      const orderA = levelOrder[levelA] ?? 4
+      const orderB = levelOrder[levelB] ?? 4
       if (orderA !== orderB) return orderA - orderB
       return (b.peak_score ?? b.congestion_score ?? b.score ?? 0) - (a.peak_score ?? a.congestion_score ?? a.score ?? 0)
     })
@@ -31,13 +41,13 @@ export function HotspotList({ hotspots, onDeployResult, deployedIntersectionIds 
 
   const filtered = useMemo(() => {
     if (filter === 'all') return sorted
-    return sorted.filter((h) => (h.level ?? h.congestion_level ?? 'HIGH').toUpperCase() === filter)
+    return sorted.filter((h) => getLevel(h) === filter)
   }, [sorted, filter])
 
   const visible = filtered.slice(0, visibleCount)
   const hasMore = visibleCount < filtered.length
-  const criticalCount = sorted.filter((h) => (h.level ?? h.congestion_level ?? '').toUpperCase() === 'CRITICAL').length
-  const highCount = sorted.filter((h) => (h.level ?? h.congestion_level ?? '').toUpperCase() === 'HIGH').length
+  const criticalCount = sorted.filter((h) => getLevel(h) === 'CRITICAL').length
+  const highCount = sorted.filter((h) => getLevel(h) === 'HIGH').length
 
   async function handleDeploy(hotspot) {
     const id = hotspot.intersection_id ?? hotspot.id
@@ -100,8 +110,8 @@ export function HotspotList({ hotspots, onDeployResult, deployedIntersectionIds 
         {visible.map((h) => {
           const name = h.name ?? h.intersection_id ?? h.id ?? '—'
           const score = h.peak_score ?? h.congestion_score ?? h.score ?? 0
-          const level = (h.level ?? h.congestion_level ?? 'HIGH').toUpperCase()
-          const color = LEVEL_COLORS[level] || LEVEL_COLORS.HIGH
+          const level = getLevel(h)
+          const color = LEVEL_COLORS[level] ?? LEVEL_COLORS.HIGH
           const id = h.intersection_id ?? h.id
           const isDeploying = deployingId === id
           const isDeployed = deployedSet.has(id)

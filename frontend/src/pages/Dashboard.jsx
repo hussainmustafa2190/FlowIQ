@@ -72,7 +72,7 @@ export function Dashboard({ setToast }) {
     setAssignmentsLocal(next)
     refetch()
     const name = result?.assignments?.[0]?.intersection_name ?? hotspot?.name ?? hotspot?.intersection_id ?? 'location'
-    setToast?.(`✅ Deployed to ${name}`)
+    setToast?.(`✅ Resource deployed to ${name}`)
   }
 
   const maxCongestion =

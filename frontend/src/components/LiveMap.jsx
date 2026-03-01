@@ -23,9 +23,9 @@ function getCoords(intersection, index) {
 
 function getLevelFromScore(score) {
   if (score == null || Number.isNaN(score)) return 'NORMAL'
-  if (score > 75) return 'CRITICAL'
-  if (score > 50) return 'HIGH'
-  if (score > 25) return 'NORMAL'
+  if (score > 80) return 'CRITICAL'
+  if (score > 60) return 'HIGH'
+  if (score > 35) return 'NORMAL'
   return 'LOW'
 }
 
@@ -271,8 +271,10 @@ export const LiveMap = forwardRef(function LiveMap({ intersections, onSelectInte
         >
           {intersections.map((int, i) => {
             const { lat, lng } = getCoords(int, i)
-            const level = (int.level ?? int.current_level ?? 'NORMAL').toUpperCase()
-            const color = LEVEL_COLORS[level] || LEVEL_COLORS.NORMAL
+            const score = int.congestion_score ?? int.current_score ?? int.score
+            const rawLevel = int.level ?? int.current_level
+            const level = rawLevel ? String(rawLevel).toUpperCase() : getLevelFromScore(score)
+            const color = (LEVEL_COLORS[level] ?? LEVEL_COLORS.NORMAL)
             const isCritical = level === 'CRITICAL'
             const id = int.id ?? int.intersection_id
             const isHighlighted = highlightedId === id

@@ -25,37 +25,33 @@ export function ResourceTable({ assignments, loading }) {
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-[#8b949e] border-b border-[#21262d]">
-              <th className="px-4 py-2 font-medium">Resource Name</th>
               <th className="px-4 py-2 font-medium">Intersection Name</th>
+              <th className="px-4 py-2 font-medium">Resource Assigned</th>
               <th className="px-4 py-2 font-medium">Action</th>
               <th className="px-4 py-2 font-medium">Deploy By</th>
-              <th className="px-4 py-2 font-medium">Status</th>
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-[#8b949e]">
-                  No assignments
+                <td colSpan={4} className="px-4 py-6 text-center text-[#8b949e]">
+                  No assignments. Click Run Optimizer to generate.
                 </td>
               </tr>
             ) : (
               rows.map((row, i) => (
                 <tr key={i} className="border-b border-[#21262d] last:border-0">
                   <td className="px-4 py-2 text-[#e6edf3]">
-                    {row.resource_name ?? row.resource_id ?? '—'}
-                  </td>
-                  <td className="px-4 py-2 text-[#e6edf3]">
                     {row.intersection_name ?? row.intersection_id ?? '—'}
                   </td>
-                  <td className="px-4 py-2 text-[#e6edf3] max-w-[180px] truncate" title={row.action}>
+                  <td className="px-4 py-2 text-[#e6edf3]">
+                    {row.resource_name ?? row.resource_id ?? '—'}
+                  </td>
+                  <td className="px-4 py-2 text-[#e6edf3] max-w-[200px] truncate" title={row.action}>
                     {row.action ?? '—'}
                   </td>
                   <td className="px-4 py-2 text-[#e6edf3]">
                     {row.deploy_by ?? '—'}
-                  </td>
-                  <td className="px-4 py-2">
-                    <span className="text-[#34d399]">{row.status ?? 'Active'}</span>
                   </td>
                 </tr>
               ))

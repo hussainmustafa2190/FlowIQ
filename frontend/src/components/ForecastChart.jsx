@@ -1,6 +1,7 @@
 import {
-  LineChart,
+  ComposedChart,
   Line,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -32,9 +33,9 @@ function formatMinutesAhead(value) {
 
 function getLevel(score) {
   if (score == null || Number.isNaN(score)) return 'NORMAL'
-  if (score > 75) return 'CRITICAL'
-  if (score > 50) return 'HIGH'
-  if (score > 25) return 'NORMAL'
+  if (score > 80) return 'CRITICAL'
+  if (score > 60) return 'HIGH'
+  if (score > 35) return 'NORMAL'
   return 'LOW'
 }
 
@@ -44,21 +45,30 @@ function getLevelFromIntersection(int, peakScore) {
   return getLevel(peakScore ?? int?.congestion_score ?? int?.current_score ?? int?.score ?? 50)
 }
 
+const FILL_COLORS = { critical: '#ef4444', high: '#f97316', normal: '#34d399' }
+
 function getLineColor(forecast) {
   if (!Array.isArray(forecast) || !forecast.length) return LINE_COLORS.normal
   const scores = forecast.map((d) =>
     typeof d === 'number' ? d : (d.congestion_score ?? d.value ?? 0)
   )
   const maxScore = Math.max(...scores)
-  if (maxScore > 75) return LINE_COLORS.critical
-  if (maxScore > 50) return LINE_COLORS.high
+  if (maxScore > 80) return LINE_COLORS.critical
+  if (maxScore > 60) return LINE_COLORS.high
   return LINE_COLORS.normal
+}
+
+function getFillColor(peakScore) {
+  if (peakScore == null) return FILL_COLORS.normal
+  if (peakScore > 80) return FILL_COLORS.critical
+  if (peakScore > 60) return FILL_COLORS.high
+  return FILL_COLORS.normal
 }
 
 function getPeakBadgeStyle(peakScore) {
   if (peakScore == null) return { bg: 'bg-[#21262d]', text: 'text-[#8b949e]' }
-  if (peakScore > 75) return { bg: 'bg-red-500/25', text: 'text-red-400' }
-  if (peakScore > 50) return { bg: 'bg-orange-500/25', text: 'text-orange-400' }
+  if (peakScore > 80) return { bg: 'bg-red-500/25', text: 'text-red-400' }
+  if (peakScore > 60) return { bg: 'bg-orange-500/25', text: 'text-orange-400' }
   return { bg: 'bg-emerald-500/25', text: 'text-emerald-400' }
 }
 
@@ -122,14 +132,14 @@ function StatusMessage({ level }) {
 
 function SummaryText({ peakScore }) {
   if (peakScore == null) return null
-  if (peakScore > 75) {
+  if (peakScore > 80) {
     return (
       <p className="text-xs text-red-400 mt-2">
         ⚠️ CRITICAL congestion predicted — resource deployment recommended
       </p>
     )
   }
-  if (peakScore > 50) {
+  if (peakScore > 60) {
     return (
       <p className="text-xs text-orange-400 mt-2">
         ⚡ HIGH congestion predicted — monitor closely
@@ -145,8 +155,8 @@ function SummaryText({ peakScore }) {
 
 function getRiskBadgeStyle(riskScore) {
   if (riskScore == null) return { bg: 'bg-[#21262d]', text: 'text-[#8b949e]', label: '—' }
-  if (riskScore > 70) return { bg: 'bg-red-500/25', text: 'text-red-400', label: 'HIGH RISK' }
-  if (riskScore > 40) return { bg: 'bg-orange-500/25', text: 'text-orange-400', label: 'MODERATE RISK' }
+  if (riskScore > 80) return { bg: 'bg-red-500/25', text: 'text-red-400', label: 'HIGH RISK' }
+  if (riskScore > 60) return { bg: 'bg-orange-500/25', text: 'text-orange-400', label: 'MODERATE RISK' }
   return { bg: 'bg-emerald-500/25', text: 'text-emerald-400', label: 'LOW RISK' }
 }
 
@@ -292,9 +302,13 @@ export function ForecastChart({ forecastResult, selectedIntersection, loading, f
       </div>
       {dataValid ? (
         <ResponsiveContainer width="100%" height={200}>
-          <LineChart data={data} margin={{ top: 5, right: 10, left: 0, bottom: 60 }}>
-            <ReferenceArea y1={75} y2={100} fill="#ef4444" fillOpacity={0.15} />
-            <ReferenceArea y1={50} y2={75} fill="#f97316" fillOpacity={0.15} />
+          <ComposedChart data={data} margin={{ top: 5, right: 10, left: 0, bottom: 60 }}>
+            <defs>
+              <linearGradient id="forecastGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={getFillColor(peakScore)} stopOpacity={0.5} />
+                <stop offset="100%" stopColor={getFillColor(peakScore)} stopOpacity={0} />
+              </linearGradient>
+            </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="#21262d" />
             <XAxis
               dataKey="minutes_ahead"
@@ -318,7 +332,10 @@ export function ForecastChart({ forecastResult, selectedIntersection, loading, f
               ticks={[0, 25, 50, 75, 100]}
             />
             <Tooltip content={<CustomTooltip />} />
-            <ReferenceLine y={75} stroke="#ef4444" strokeDasharray="3 3" strokeOpacity={0.6} />
+            <ReferenceArea y1={80} y2={100} fill="#ef4444" fillOpacity={0.08} />
+            <ReferenceArea y1={60} y2={80} fill="#f97316" fillOpacity={0.08} />
+            <ReferenceLine y={80} stroke="#ef4444" strokeDasharray="3 3" strokeOpacity={0.6} />
+            <Area type="monotone" dataKey="congestion_score" stroke="none" fill="url(#forecastGradient)" />
             <Line
               type="monotone"
               dataKey="congestion_score"
@@ -326,7 +343,7 @@ export function ForecastChart({ forecastResult, selectedIntersection, loading, f
               strokeWidth={2}
               dot={{ fill: lineColor, r: 3 }}
             />
-          </LineChart>
+          </ComposedChart>
         </ResponsiveContainer>
       ) : (
         <div className="h-[200px] rounded bg-[#161b22] border border-[#21262d] flex items-center justify-center text-[#8b949e] text-sm">

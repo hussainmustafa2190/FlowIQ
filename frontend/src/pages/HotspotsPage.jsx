@@ -9,9 +9,9 @@ import { postPredict } from '../api/flows.js'
 
 function levelFromScore(score) {
   if (score == null) return 'NORMAL'
-  if (score > 75) return 'CRITICAL'
-  if (score > 50) return 'HIGH'
-  if (score > 25) return 'NORMAL'
+  if (score > 80) return 'CRITICAL'
+  if (score > 60) return 'HIGH'
+  if (score > 35) return 'NORMAL'
   return 'LOW'
 }
 
@@ -19,6 +19,7 @@ const FILTERS = [
   { id: 'all', label: 'All' },
   { id: 'CRITICAL', label: 'CRITICAL' },
   { id: 'HIGH', label: 'HIGH' },
+  { id: 'NORMAL', label: 'NORMAL' },
 ]
 
 export function HotspotsPage() {
@@ -51,6 +52,7 @@ export function HotspotsPage() {
 
   const criticalCount = sorted.filter((h) => h._level === 'CRITICAL').length
   const highCount = sorted.filter((h) => h._level === 'HIGH').length
+  const normalCount = sorted.filter((h) => h._level === 'NORMAL').length
 
   const fetchForecast = useCallback(async (intersection) => {
     const id = intersection?.id ?? intersection?.intersection_id
@@ -156,10 +158,10 @@ export function HotspotsPage() {
           <div className="px-4 py-3 border-b border-[#21262d]">
             <h2 className="text-sm font-semibold text-white">All Hotspots</h2>
             <p className="text-xs text-[#8b949e] mt-1">
-              {sorted.length} intersections — {criticalCount} CRITICAL, {highCount} HIGH
+              {sorted.length} intersections — {criticalCount} CRITICAL, {highCount} HIGH, {normalCount} NORMAL
             </p>
           </div>
-          <div className="px-4 py-2 border-b border-[#21262d] flex gap-1">
+          <div className="px-4 py-2 border-b border-[#21262d] flex flex-wrap gap-1">
             {FILTERS.map((f) => (
               <button
                 key={f.id}
@@ -171,7 +173,9 @@ export function HotspotsPage() {
                       ? 'bg-red-500/25 text-red-400 border border-red-500/40'
                       : f.id === 'HIGH'
                         ? 'bg-orange-500/25 text-orange-400 border border-orange-500/40'
-                        : 'bg-[#21262d] text-[#e6edf3] border border-[#30363d]'
+                        : f.id === 'NORMAL'
+                          ? 'bg-yellow-500/25 text-yellow-400 border border-yellow-500/40'
+                          : 'bg-[#21262d] text-[#e6edf3] border border-[#30363d]'
                     : 'bg-transparent text-[#8b949e] border border-transparent hover:text-[#e6edf3]'
                 }`}
               >
