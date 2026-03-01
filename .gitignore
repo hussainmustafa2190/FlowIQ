@@ -1,4 +1,3 @@
-processed/  dataset/  weights/  flowiq-env/  __pycache__/  *.npy  *.pkl  *.pt  *.csv 
 processed/ 
 dataset/ 
 weights/ 
@@ -8,3 +7,5 @@ __pycache__/
 *.pkl 
 *.pt 
 *.csv 
+node_modules/ 
+dist/ 
