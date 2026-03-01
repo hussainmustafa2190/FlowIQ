@@ -26,3 +26,31 @@ body {
   border: 2px solid #ef4444;
   animation: pulse-ring 1.5s ease-out infinite;
 }
+
+@keyframes pulse-badge {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.75; }
+}
+
+.pulse-badge {
+  animation: pulse-badge 1.5s ease-in-out infinite;
+}
+
+/* Analytics page load animations */
+@keyframes analytics-fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.analytics-animate-in {
+  animation: analytics-fade-in 0.4s ease-out forwards;
+}
+
+.analytics-animate-in-1 { animation-delay: 0.05s; }
+.analytics-animate-in-2 { animation-delay: 0.1s; }
+.analytics-animate-in-3 { animation-delay: 0.15s; }
+.analytics-animate-in-4 { animation-delay: 0.2s; }
+.analytics-animate-in-5 { animation-delay: 0.25s; }
+.analytics-animate-in-6 { animation-delay: 0.3s; }
+.analytics-animate-in-7 { animation-delay: 0.35s; }
+.analytics-animate-in-8 { animation-delay: 0.4s; }

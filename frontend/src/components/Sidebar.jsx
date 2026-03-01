@@ -8,7 +8,7 @@ const NAV_ITEMS = [
   { id: 'analytics', label: 'Analytics' },
 ]
 
-export function Sidebar({ simulationMode }) {
+export function Sidebar({ simulationMode, currentView, onNavigate }) {
   const [time, setTime] = useState(new Date())
   const apiOk = useApiHealth()
 
@@ -20,18 +20,21 @@ export function Sidebar({ simulationMode }) {
   return (
     <aside className="w-60 shrink-0 bg-[#0d1117] border-r border-[#21262d] flex flex-col min-h-screen">
       <div className="p-5 border-b border-[#21262d]">
-        <h1 className="text-xl font-bold text-white tracking-tight">FlowIQ</h1>
+        <h1 className="text-xl font-bold text-white tracking-tight">FlowQ</h1>
         <p className="text-xs text-[#8b949e] mt-0.5">Predict. Optimize. Act.</p>
       </div>
       <nav className="flex-1 p-3">
         {NAV_ITEMS.map((item) => (
-          <a
+          <button
             key={item.id}
-            href="#"
-            className="flex items-center px-3 py-2 rounded-lg text-sm text-[#e6edf3] hover:bg-[#21262d] mb-1"
+            type="button"
+            onClick={() => onNavigate?.(item.id)}
+            className={`w-full text-left flex items-center px-3 py-2 rounded-lg text-sm mb-1 transition-colors ${
+              currentView === item.id ? 'bg-[#21262d] text-white' : 'text-[#e6edf3] hover:bg-[#21262d]'
+            }`}
           >
             {item.label}
-          </a>
+          </button>
         ))}
       </nav>
       <div className="p-4 border-t border-[#21262d] space-y-3">

@@ -20,10 +20,20 @@ export async function postOptimize() {
   return data
 }
 
+export async function getWeather() {
+  const { data } = await api.get('/weather')
+  return data
+}
+
 export async function postPredict(intersectionId, hoursAhead = 3) {
   const { data } = await api.post('/predict', {
     intersection_id: intersectionId,
     hours_ahead: hoursAhead,
   })
+  return data
+}
+
+export async function getBoroughStats() {
+  const { data } = await api.get('/borough-stats')
   return data
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useFlowDataContext } from '../context/FlowDataContext.jsx'
 import { StatsRow } from '../components/StatsRow.jsx'
 import { LiveMap } from '../components/LiveMap.jsx'
@@ -6,9 +6,10 @@ import { HotspotList } from '../components/HotspotList.jsx'
 import { ForecastChart } from '../components/ForecastChart.jsx'
 import { ResourceTable } from '../components/ResourceTable.jsx'
 import { ErrorBoundary } from '../components/ErrorBoundary.jsx'
+import { WeatherWidget } from '../components/WeatherWidget.jsx'
 import { postPredict } from '../api/flows.js'
 
-export function Dashboard() {
+export function Dashboard({ setToast }) {
   const {
     loading,
     error,
@@ -39,7 +40,15 @@ export function Dashboard() {
       const forecast = Array.isArray(data) ? data : data?.forecast ?? []
       const peak_score = data?.peak_score
       const peak_at_minutes = data?.peak_at_minutes
-      setForecastResult({ forecast, peak_score, peak_at_minutes })
+      const risk_score = data?.risk_score
+      const risk_details = data?.risk_details
+      setForecastResult({
+        forecast,
+        peak_score,
+        peak_at_minutes,
+        risk_score,
+        risk_details,
+      })
       setForecastError(false)
     } catch {
       setForecastResult(null)
@@ -57,17 +66,32 @@ export function Dashboard() {
     }
   }, [selectedIntersection, fetchForecast])
 
-  function handleDeployResult(result) {
+  function handleDeployResult(result, hotspot) {
     if (result?.error) return
     const next = Array.isArray(result) ? result : result?.assignments ?? result?.deployments ?? []
     setAssignmentsLocal(next)
     refetch()
+    const name = result?.assignments?.[0]?.intersection_name ?? hotspot?.name ?? hotspot?.intersection_id ?? 'location'
+    setToast?.(`✅ Deployed to ${name}`)
   }
 
   const maxCongestion =
     intersections.length > 0
       ? Math.max(...intersections.map((i) => i.congestion_score ?? i.current_score ?? i.score ?? 0))
       : null
+
+  const mapIntersections = useMemo(() => {
+    const byId = new Map()
+    intersections.forEach((i) => {
+      const id = i.id ?? i.intersection_id
+      if (id != null) byId.set(id, i)
+    })
+    hotspots.forEach((h) => {
+      const id = h.id ?? h.intersection_id
+      if (id != null && !byId.has(id)) byId.set(id, { ...h })
+    })
+    return byId.size > 0 ? Array.from(byId.values()) : intersections
+  }, [intersections, hotspots])
 
   return (
     <div className="flex flex-col min-h-full">
@@ -76,26 +100,37 @@ export function Dashboard() {
           {error}
         </div>
       )}
-      <StatsRow
-        loading={loading}
-        hotspotsCount={hotspots?.length ?? 0}
-        maxCongestion={maxCongestion}
-        deployedCount={assignmentsLocal?.length ?? 0}
-        avgResponseTime="2.4 min"
-        intersectionsCount={intersections?.length ?? 0}
-        live={simulationMode === false}
-      />
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 p-4">
+        <div className="flex-1 min-w-0">
+          <StatsRow
+            loading={loading}
+            hotspotsCount={hotspots?.length ?? 0}
+            maxCongestion={maxCongestion}
+            deployedCount={assignmentsLocal?.length ?? 0}
+            avgResponseTime="2.4 min"
+            intersectionsCount={intersections?.length ?? 0}
+            live={simulationMode === false}
+          />
+        </div>
+        <div className="shrink-0 sm:pt-4">
+          <WeatherWidget />
+        </div>
+      </div>
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-[60%_40%] gap-4 p-4 min-h-0">
         <div className="min-h-[320px] lg:min-h-[400px] relative">
           <LiveMap
-            intersections={intersections}
+            intersections={mapIntersections}
             onSelectIntersection={setSelectedIntersection}
             selectedId={selectedIntersection?.id ?? selectedIntersection?.intersection_id}
             loading={loading}
           />
         </div>
         <div className="min-h-[240px] lg:min-h-[400px]">
-          <HotspotList hotspots={hotspots} onDeployResult={handleDeployResult} />
+          <HotspotList
+            hotspots={hotspots}
+            onDeployResult={handleDeployResult}
+            deployedIntersectionIds={assignmentsLocal?.map((a) => a.intersection_id) ?? []}
+          />
         </div>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4">

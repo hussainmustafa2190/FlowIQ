@@ -28,7 +28,7 @@ export function StatsRow({ loading, hotspotsCount, maxCongestion, deployedCount,
   const monitoringBadge =
     live === true ? { text: 'Live Data', variant: 'green' } : live === false ? { text: 'Simulated', variant: 'yellow' } : null
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 p-4">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
       <StatCard
         label="Monitoring"
         value={intersectionsCount != null ? `${intersectionsCount} intersections` : '—'}

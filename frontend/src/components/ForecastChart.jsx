@@ -16,6 +16,13 @@ const LINE_COLORS = {
   normal: '#34d399',
 }
 
+const STATUS_MESSAGES = {
+  CRITICAL: '⚠️ Immediate action required',
+  HIGH: '⚡ Monitor closely',
+  NORMAL: '✅ Traffic flowing normally',
+  LOW: '✅ Clear — no action needed',
+}
+
 function formatMinutesAhead(value) {
   if (value < 60) return value + 'min'
   const hours = Math.floor(value / 60)
@@ -24,10 +31,17 @@ function formatMinutesAhead(value) {
 }
 
 function getLevel(score) {
+  if (score == null || Number.isNaN(score)) return 'NORMAL'
   if (score > 75) return 'CRITICAL'
   if (score > 50) return 'HIGH'
   if (score > 25) return 'NORMAL'
   return 'LOW'
+}
+
+function getLevelFromIntersection(int, peakScore) {
+  const level = (int?.level ?? int?.current_level ?? '').toUpperCase()
+  if (level === 'CRITICAL' || level === 'HIGH' || level === 'NORMAL' || level === 'LOW') return level
+  return getLevel(peakScore ?? int?.congestion_score ?? int?.current_score ?? int?.score ?? 50)
 }
 
 function getLineColor(forecast) {
@@ -91,6 +105,21 @@ function normalizeChartData(forecast) {
   }
 }
 
+function StatusMessage({ level }) {
+  const msg = STATUS_MESSAGES[level] ?? STATUS_MESSAGES.NORMAL
+  const isCritical = level === 'CRITICAL'
+  const isHigh = level === 'HIGH'
+  const isLow = level === 'LOW'
+  const cls = isCritical
+    ? 'text-red-400'
+    : isHigh
+      ? 'text-orange-400'
+      : isLow
+        ? 'text-emerald-400'
+        : 'text-emerald-400'
+  return <p className={`text-sm font-medium ${cls} mb-2`}>{msg}</p>
+}
+
 function SummaryText({ peakScore }) {
   if (peakScore == null) return null
   if (peakScore > 75) {
@@ -111,6 +140,56 @@ function SummaryText({ peakScore }) {
     <p className="text-xs text-emerald-400 mt-2">
       ✅ Traffic flowing normally
     </p>
+  )
+}
+
+function getRiskBadgeStyle(riskScore) {
+  if (riskScore == null) return { bg: 'bg-[#21262d]', text: 'text-[#8b949e]', label: '—' }
+  if (riskScore > 70) return { bg: 'bg-red-500/25', text: 'text-red-400', label: 'HIGH RISK' }
+  if (riskScore > 40) return { bg: 'bg-orange-500/25', text: 'text-orange-400', label: 'MODERATE RISK' }
+  return { bg: 'bg-emerald-500/25', text: 'text-emerald-400', label: 'LOW RISK' }
+}
+
+function getRiskRecommendation(riskScore) {
+  if (riskScore == null) return null
+  if (riskScore > 70) return '⚠️ Historically dangerous — preemptive deployment recommended'
+  if (riskScore > 40) return '⚡ Moderate risk — monitor closely during peak hours'
+  return '✅ Low historical risk — standard monitoring'
+}
+
+function RiskAnalysis({ riskScore, riskDetails }) {
+  const badge = getRiskBadgeStyle(riskScore)
+  const recommendation = getRiskRecommendation(riskScore)
+  const accidentHistory = riskDetails?.accident_history
+  const peakHourBoost = riskDetails?.peak_hour_boost
+  const weatherImpact = riskDetails?.weather_impact
+  return (
+    <div className="mt-4 pt-4 border-t border-[#21262d]">
+      <p className="text-xs text-[#8b949e] mb-2 font-medium">Risk Analysis</p>
+      <div className="flex flex-wrap items-center gap-2 mb-2">
+        <span
+          className={`inline-flex items-center px-2.5 py-1 rounded text-sm font-semibold ${badge.bg} ${badge.text}`}
+        >
+          {riskScore != null ? `${Number(riskScore).toFixed(0)} — ${badge.label}` : badge.label}
+        </span>
+      </div>
+      <div className="flex flex-wrap gap-2 mb-2">
+        <span className="inline-flex items-center px-2 py-1 rounded text-xs bg-[#21262d] text-[#e6edf3]">
+          Accident History: {accidentHistory != null ? accidentHistory : '—'} incidents
+        </span>
+        <span className="inline-flex items-center px-2 py-1 rounded text-xs bg-[#21262d] text-[#e6edf3]">
+          Peak Hour Risk: +{peakHourBoost != null ? peakHourBoost : '—'}%
+        </span>
+        <span className="inline-flex items-center px-2 py-1 rounded text-xs bg-[#21262d] text-[#e6edf3]">
+          Weather Impact: +{weatherImpact != null ? Number(weatherImpact).toFixed(0) : '—'} pts
+        </span>
+      </div>
+      {recommendation && (
+        <p className="text-xs text-[#8b949e]">
+          {recommendation}
+        </p>
+      )}
+    </div>
   )
 }
 
@@ -150,7 +229,6 @@ function FriendlyErrorMessage() {
 }
 
 export function ForecastChart({ forecastResult, selectedIntersection, loading, forecastError }) {
-  const showFriendlyError = forecastError || (selectedIntersection && !loading && !isValidForecastData(forecastResult?.forecast))
   const forecast = forecastResult?.forecast
   let data = []
   try {
@@ -162,19 +240,19 @@ export function ForecastChart({ forecastResult, selectedIntersection, loading, f
   const lineColor = getLineColor(forecast)
   const peakScore = forecastResult?.peak_score
   const peakAtMinutes = forecastResult?.peak_at_minutes
+  const riskScore = forecastResult?.risk_score
+  const riskDetails = forecastResult?.risk_details
   const intersectionName =
     selectedIntersection?.name ??
     selectedIntersection?.id ??
     selectedIntersection?.intersection_id ??
     'Intersection'
   const peakBadgeStyle = getPeakBadgeStyle(peakScore)
+  const level = getLevelFromIntersection(selectedIntersection, peakScore)
+  const currentSpeed = selectedIntersection?.current_speed_mph ?? selectedIntersection?.speed ?? selectedIntersection?.speed_mph
 
   if (loading) {
     return <LoadingSpinner />
-  }
-
-  if (showFriendlyError) {
-    return <FriendlyErrorMessage />
   }
 
   if (!selectedIntersection) {
@@ -185,7 +263,7 @@ export function ForecastChart({ forecastResult, selectedIntersection, loading, f
     )
   }
 
-  if (!dataValid) {
+  if (forecastError && !forecastResult) {
     return <FriendlyErrorMessage />
   }
 
@@ -194,6 +272,12 @@ export function ForecastChart({ forecastResult, selectedIntersection, loading, f
       <h3 className="text-sm font-semibold text-white mb-2">
         {intersectionName} — 3hr Forecast
       </h3>
+      <StatusMessage level={level} />
+      {currentSpeed != null && (
+        <p className="text-sm text-[#8b949e] mb-2">
+          Current speed: {Number(currentSpeed).toFixed(0)} mph
+        </p>
+      )}
       <div className="flex flex-wrap gap-2 mb-3">
         <span
           className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${peakBadgeStyle.bg} ${peakBadgeStyle.text}`}
@@ -206,44 +290,51 @@ export function ForecastChart({ forecastResult, selectedIntersection, loading, f
           </span>
         )}
       </div>
-      <ResponsiveContainer width="100%" height={200}>
-        <LineChart data={data} margin={{ top: 5, right: 10, left: 0, bottom: 60 }}>
-          <ReferenceArea y1={75} y2={100} fill="#ef4444" fillOpacity={0.15} />
-          <ReferenceArea y1={50} y2={75} fill="#f97316" fillOpacity={0.15} />
-          <CartesianGrid strokeDasharray="3 3" stroke="#21262d" />
-          <XAxis
-            dataKey="minutes_ahead"
-            tick={{ fill: '#8b949e', fontSize: 10 }}
-            stroke="#21262d"
-            angle={-45}
-            textAnchor="end"
-            height={60}
-            tickFormatter={(value) => {
-              if (value < 60) return value + 'min'
-              const hours = Math.floor(value / 60)
-              const mins = value % 60
-              return mins === 0 ? hours + 'hr' : hours + 'hr ' + mins + 'm'
-            }}
-          />
-          <YAxis
-            label={{ value: 'Congestion Score', angle: -90, position: 'insideLeft', style: { fill: '#8b949e', fontSize: 10 } }}
-            tick={{ fill: '#8b949e', fontSize: 10 }}
-            stroke="#21262d"
-            domain={[0, 100]}
-            ticks={[0, 25, 50, 75, 100]}
-          />
-          <Tooltip content={<CustomTooltip />} />
-          <ReferenceLine y={75} stroke="#ef4444" strokeDasharray="3 3" strokeOpacity={0.6} />
-          <Line
-            type="monotone"
-            dataKey="congestion_score"
-            stroke={lineColor}
-            strokeWidth={2}
-            dot={{ fill: lineColor, r: 3 }}
-          />
-        </LineChart>
-      </ResponsiveContainer>
+      {dataValid ? (
+        <ResponsiveContainer width="100%" height={200}>
+          <LineChart data={data} margin={{ top: 5, right: 10, left: 0, bottom: 60 }}>
+            <ReferenceArea y1={75} y2={100} fill="#ef4444" fillOpacity={0.15} />
+            <ReferenceArea y1={50} y2={75} fill="#f97316" fillOpacity={0.15} />
+            <CartesianGrid strokeDasharray="3 3" stroke="#21262d" />
+            <XAxis
+              dataKey="minutes_ahead"
+              tick={{ fill: '#8b949e', fontSize: 10 }}
+              stroke="#21262d"
+              angle={-45}
+              textAnchor="end"
+              height={60}
+              tickFormatter={(value) => {
+                if (value < 60) return value + 'min'
+                const hours = Math.floor(value / 60)
+                const mins = value % 60
+                return mins === 0 ? hours + 'hr' : hours + 'hr ' + mins + 'm'
+              }}
+            />
+            <YAxis
+              label={{ value: 'Congestion Score', angle: -90, position: 'insideLeft', style: { fill: '#8b949e', fontSize: 10 } }}
+              tick={{ fill: '#8b949e', fontSize: 10 }}
+              stroke="#21262d"
+              domain={[0, 100]}
+              ticks={[0, 25, 50, 75, 100]}
+            />
+            <Tooltip content={<CustomTooltip />} />
+            <ReferenceLine y={75} stroke="#ef4444" strokeDasharray="3 3" strokeOpacity={0.6} />
+            <Line
+              type="monotone"
+              dataKey="congestion_score"
+              stroke={lineColor}
+              strokeWidth={2}
+              dot={{ fill: lineColor, r: 3 }}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      ) : (
+        <div className="h-[200px] rounded bg-[#161b22] border border-[#21262d] flex items-center justify-center text-[#8b949e] text-sm">
+          No forecast data
+        </div>
+      )}
       <SummaryText peakScore={peakScore} />
+      <RiskAnalysis riskScore={riskScore} riskDetails={riskDetails} />
     </div>
   )
 }
